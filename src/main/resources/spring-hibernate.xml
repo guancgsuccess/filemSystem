@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+	"-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+	"http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+	
+<hibernate-configuration>
+	<session-factory>
+	
+		<!-- 配置数据库方言 -->
+		<property name="hibernate.dialect">org.hibernate.dialect.Oracle10gDialect</property>
+		
+		<!-- 修改事务隔离级别 
+			Read uncommitted isolation  1
+			read committed isolation    2
+			repeatable read isolation   4
+			Serializable  isolation     8
+			
+			mysql支持以上四种
+			Oracle 支持 2(默认)  8
+		-->
+		<property name="hibernate.connection.isolation">2</property>
+		
+		<!-- 其他配置 -->
+		<!-- create : 代表每次都先删除表再创建
+			update :如果没有就创建表,有的话更新
+		 -->
+		<property name="hibernate.hbm2ddl.auto">update</property>
+		
+		<!-- 是否在控制台打印输出sql语句  true/false -->
+		<property name="hibernate.show_sql">true</property>
+		<!-- 格式化sql语句 -->
+		<property name="hibernate.format_sql">true</property>
+		
+		<mapping class="com.tz.film.film.entity.Film"/>
+		<mapping class="com.tz.film.film.entity.Album"/>
+		<mapping class="com.tz.film.sys.entity.User"/>
+		<mapping class="com.tz.film.sys.entity.Menu"/>
+		<mapping class="com.tz.film.sys.entity.Role"/>
+	</session-factory>
+</hibernate-configuration>

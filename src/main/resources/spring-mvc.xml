@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:mvc="http://www.springframework.org/schema/mvc" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:p="http://www.springframework.org/schema/p" 
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans-4.2.xsd 
+		http://www.springframework.org/schema/context 
+		http://www.springframework.org/schema/context/spring-context-4.2.xsd 
+		http://www.springframework.org/schema/mvc 
+		http://www.springframework.org/schema/mvc/spring-mvc-4.2.xsd
+		http://www.springframework.org/schema/tx
+		http://www.springframework.org/schema/tx/spring-tx-4.2.xsd
+		http://www.springframework.org/schema/aop 
+		http://www.springframework.org/schema/aop/spring-aop.xsd">
+	<!-- 开启aop操作 -->    
+    <aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+    
+	<!-- 扫描包 -->
+	<context:component-scan base-package="com.tz.film"></context:component-scan>
+	
+	<!-- 配置c3p0连接池 -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<!-- 注入属性值 -->
+		<property name="driverClass" value="oracle.jdbc.driver.OracleDriver"></property>
+		<property name="jdbcUrl" value="jdbc:oracle:thin:@localhost:1521:XE"></property>
+		<property name="user" value="guan"></property>
+		<property name="password" value="guan"></property>
+	</bean>
+	
+	<!-- 配置hibernate的sessionFactory实例，通过spring提供的LocalSessionFactoryBean 进行配置 -->
+	<bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<!-- 配置数据源属性 -->
+		<property name="dataSource" ref="dataSource"></property>
+		
+		<!-- 指定使用hibernate核心配置文件 -->
+		<property name="configLocations" value="classpath:spring-hibernate.xml"></property>
+	</bean>
+	
+	<!-- 配置spring的声明式事务 -->
+	<!-- 第一步 配置事务管理器 -->
+	<bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"></property>
+	</bean>
+
+	<!-- 通过AOP配置提供事务增强，让service包下所有Bean的所有方法拥有事务 -->  
+    <aop:config>  
+        <aop:pointcut id="serviceMethod" expression=" execution(* com.tz.ssm.service..*(..))" />  
+        <aop:advisor pointcut-ref="serviceMethod" advice-ref="txAdvice" />  
+    </aop:config>
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">  
+        <tx:attributes>
+        	<!-- 传播行为 -->
+            <tx:method name="*" />  
+        </tx:attributes>  
+    </tx:advice>
+	
+	<!-- 第三步 开启事务注解 -->
+	<tx:annotation-driven transaction-manager="transactionManager"/>
+	
+	<mvc:annotation-driven  validator="validator"></mvc:annotation-driven>
+	
+	<!-- 定义c3p0 -->
+	<!-- 视图解析器
+		解析jsp视图，默认使用jstl标签
+	 -->
+	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+		<property name="prefix" value="/WEB-INF/jsp/"/>
+		<property name="suffix" value=".jsp"/>
+	</bean>
+	
+	<!-- 静态资源的解析 比如js、css、img。。。-->
+	<mvc:resources location="/js/" mapping="/js/**"></mvc:resources>
+	<mvc:resources location="/img/" mapping="/img/**"></mvc:resources>
+	<mvc:resources location="/css/" mapping="/css/**"></mvc:resources>
+	<mvc:resources location="/dist/" mapping="/dist/**"></mvc:resources>
+	<mvc:resources location="/upload/" mapping="/upload/**"></mvc:resources>
+	
+	<!-- 自定义参数绑定 -->
+	<!-- <bean id="conversionService" class="org.springframework.format.support.FormattingConversionServiceFactoryBean">
+		转换器
+		<property name="converters">
+			<list>
+				日期类型转换
+				<bean class="com.tz.film.util.DateConverter"></bean>
+			</list>
+		</property>
+	</bean> -->
+	
+	<!--拦截器 -->
+	<mvc:interceptors>
+		<!-- 登陆认证拦截器 -->
+		<mvc:interceptor>
+			<mvc:mapping path="/**"/>
+			<mvc:exclude-mapping path="/**/fonts/*"/>
+         	<mvc:exclude-mapping path="/**/*.css"/>
+         	<mvc:exclude-mapping path="/**/*.swf"/>
+          	<mvc:exclude-mapping path="/**/*.js"/>
+          	<mvc:exclude-mapping path="/**/*.png"/>
+          	<mvc:exclude-mapping path="/**/*.gif"/>
+         	<mvc:exclude-mapping path="/**/*.jpg"/>
+         	<mvc:exclude-mapping path="/**/*.jpeg"/>
+			<bean class="com.tz.film.interceptor.LoginInterceptor"></bean>
+		</mvc:interceptor>
+	</mvc:interceptors>
+	
+	<!-- 配置校验器 -->
+	<!-- 校验器 -->
+	<bean id="validator"
+		class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean">
+		<!-- 校验器 -->
+		<property name="providerClass" value="org.hibernate.validator.HibernateValidator" />
+		<!-- 指定校验使用的资源文件，如果不指定则默认使用classpath下的ValidationMessages.properties -->
+		<property name="validationMessageSource" ref="messageSource" />
+	</bean>
+	<!-- 校验错误信息配置文件 -->
+	<bean id="messageSource"
+		class="org.springframework.context.support.ReloadableResourceBundleMessageSource">
+		<!-- 资源文件名 -->
+		<property name="basenames">   
+       	 <list>    
+            <value>classpath:messageTips</value> 
+       	 </list>   
+    	</property>
+		<!-- 资源文件编码格式 -->
+		<property name="defaultEncoding" value="utf-8" />
+		<!-- 对资源文件内容缓存时间，单位秒 -->
+		<property name="cacheSeconds" value="120" />
+	</bean>
+	
+	<!-- 多文件上传解析器 -->
+	<bean id="multipartResolver"  class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+		<property name="maxUploadSize" value="1024000"></property>
+		<property name="defaultEncoding" value="utf-8"/><!--属性：编码-->
+	</bean>
+</beans>
